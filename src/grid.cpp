@@ -706,7 +706,7 @@ void Grid::update_costs(float robot_semi_width, bool color_all_cells)
 
     float x[3] = {-500.0f, 500.0f, 500.0f};
     float y[3] = {1000.0f, 1000.0f, 2000.0f};
-    float z[3] = {100.0f, 50.0f, 75.0f};
+    float z[3] = {100.0f, 20.0f, 75.0f};
 
     set_cost_by_offset(x, y, z);
 
@@ -731,6 +731,11 @@ for (auto &&[k, v]: iter::filter([upper, lower](auto &v) { return std::get<1>(v)
 
 void Grid::set_cost_by_offset(float* x_vector, float* y_vector, float* cost_vector){
     static QBrush occ_brush(QColor(params.occupied_color));
+    static QBrush orange_brush(QColor("Orange"));
+    static QBrush yellow_brush(QColor("Yellow"));
+    static QBrush gray_brush(QColor("LightGray"));
+    static QBrush green_brush(QColor("LightGreen"));
+    static QBrush white(QColor("White"));
     
     for (int i = 0; i < sizeof(x_vector)/sizeof(float)+1; ++i) {
         const Eigen::Vector2f position_2d(x_vector[i], y_vector[i]);
@@ -739,7 +744,22 @@ void Grid::set_cost_by_offset(float* x_vector, float* y_vector, float* cost_vect
 
         if(std::get<bool>(cell)){
             std::get<T&>(cell).cost = cost_vector[i];
-            std::get<T&>(cell).tile->setBrush(occ_brush);
+
+            if(cost_vector[i] <= 40){
+                std::get<T&>(cell).tile->setBrush(green_brush);
+                continue;
+            }
+            if(cost_vector[i] <= 60){
+                std::get<T&>(cell).tile->setBrush(yellow_brush);
+                continue;
+            }
+            if(cost_vector[i] <= 80){
+                std::get<T&>(cell).tile->setBrush(orange_brush);
+                continue;
+            }else{
+                std::get<T&>(cell).tile->setBrush(occ_brush);
+            }
+
         }else{
             std::cout << "Cell doesn't exists." << std::endl;
         }
