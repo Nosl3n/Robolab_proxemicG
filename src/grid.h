@@ -176,8 +176,18 @@ public:
         std::vector<Eigen::Vector2f> decimate_path(const std::vector<Eigen::Vector2f> &path, unsigned int step=2);
         std::optional<QPointF> closestMatching_spiralMove(const QPointF &p, const std::function<bool(std::pair<Grid::Key, Grid::T>)> &pred);
         void set_all_costs(float value);
+        //-------------------------------------- NELSON COSAS------------------------------------------------------
+        void set_cost_by_offset(std::vector<float> x_vector, std::vector<float> y_vector, std::vector<float> cost_vector);
+        double deg2rad(double degrees); 
+        std::pair<double, double> determinarTraslacion(double cmx, double cmy);
+        std::vector<std::vector<double>> aplicarRotacion(const std::vector<std::vector<double>>& puntos, double angulo);
+        std::pair<double, double> calcularPromedios(const std::vector<double>& x, const std::vector<double>& y);
+        std::pair<std::vector<double>, std::vector<double>> dis_ang(std::vector<double> x, std::vector<double> y, double xc, double yc);
+        std::vector<double> calcularCentroDeMasa(const std::vector<double>& x, const std::vector<double>& y);
+        std::vector<double> calcularAngulos(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& cm);
 
-        void set_cost_by_offset(float* x_vector, float* y_vector, float* cost_vector);
+
+        //----------------------------------------- END -----------------------------------------------------------
 
 
         struct Params

@@ -29,17 +29,18 @@ module RoboCompGridder
 	{
 		TPaths paths;
 		long timestamp;
-		string error_msg;
+		string errorMsg;
 		bool valid;
 	};
 	interface Gridder
 	{
 		bool IsPathBlocked (TPath path);
-		bool LineOfSightToTarget (TPoint source, TPoint target, float robot_radius);
+		bool LineOfSightToTarget (TPoint source, TPoint target, float robotRadius);
 		TPoint getClosestFreePoint (TPoint source);
 		TDimensions getDimensions ();
-		Result getPaths (TPoint source, TPoint target, int max_paths, bool try_closest_free_point, bool target_is_human);
+		Result getPaths (TPoint source, TPoint target, int maxPaths, bool tryClosestFreePoint, bool targetIsHuman);
 		bool setGridDimensions (TDimensions dimensions);
+		Result setLocationAndGetPath (TPoint source, TPoint target, bool setFree, TPoint obstacle);
 	};
 };
 

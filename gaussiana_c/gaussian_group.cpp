@@ -57,7 +57,7 @@ std::vector<std::vector<double>> aplicarRotacion(const std::vector<std::vector<d
     return rotar;
 }
 
-// Función para realizar la rotación de la gaussiana
+// ----------------------------------------Función para realizar la rotación de la gaussiana
 std::tuple<std::vector<double>, std::vector<double>, std::vector<double>> rotarGaussiana(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& z, double angulo, double cmx, double cmy) {
     // Determinar la traslación en los ejes
     std::pair<double, double> traslacion = determinarTraslacion(cmx, cmy);
@@ -88,7 +88,7 @@ std::tuple<std::vector<double>, std::vector<double>, std::vector<double>> rotarG
     }
     return std::make_tuple(xrot, yrot, zrot);
 }
-
+// -------------------------- end rotacion -------------------------------------
 std::pair<double, double> calcularPromedios(const std::vector<double>& x, const std::vector<double>& y) {
     // Calcular el promedio de los elementos en el vector x
     double promedio_x = std::accumulate(x.begin(), x.end(), 0.0) / x.size();
@@ -122,19 +122,84 @@ std::pair<std::vector<double>, std::vector<double>> dis_ang(std::vector<double> 
     return std::make_pair(distancias, angulos_grados);
 
 }
+//------------------------------------- FUNCION PARA ORDENAR PUNTOS -------------------------------------------------------------------------
 
+// Función para calcular el centro de masa
+std::vector<double> calcularCentroDeMasa(const std::vector<double>& x, const std::vector<double>& y) {
+    double sum_x = 0, sum_y = 0;
+    for (size_t i = 0; i < x.size(); ++i) {
+        sum_x += x[i];
+        sum_y += y[i];
+    }
+    return {sum_x / x.size(), sum_y / y.size()};
+}
+
+// Función para calcular los ángulos con respecto al centro de masa
+std::vector<double> calcularAngulos(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& cm) {
+    std::vector<double> angulos;
+    for (size_t i = 0; i < x.size(); ++i) {
+        angulos.push_back(std::atan2(y[i] - cm[1], x[i] - cm[0]) * 180 / M_PI);
+    }
+    return angulos;
+}
+
+//----------------------------------------------- END ORDENAR PUNTOS -----------------------------------------------------------------------
 
 int main() {
 
-    std::vector<double> x = {5, 4, 6}; // Ejemplo de valores para x
-    std::vector<double> y = {4, 3, 3}; // Ejemplo de valores para y
-   
-    std::pair<double, double> promedios = calcularPromedios(x, y);
+    std::vector<double> x = {5000, 4000, 6000}; // Ejemplo de valores para x
+    std::vector<double> y = {4000, 3000, 3000}; // Ejemplo de valores para y
+//--------------------------------CONVERSION A METROS -------------------------------------------
+    for (size_t i = 0; i < x.size(); ++i) {
+        x[i] /= 1000; // Convertir de milímetros a metros
+        y[i] /= 1000; // Convertir de milímetros a metros
+    }
+//---------------------------------------- ORDENAR PUNTOS ----------------------
+    //Calcular el centro de masa
+    std::vector<double> cm = calcularCentroDeMasa(x, y);
+
+    // Calcular los ángulos con respecto al centro de masa (en grados)
+    std::vector<double> angulos = calcularAngulos(x, y, cm);
+
+    // Ajustar los ángulos para que estén en el rango de 0 a 360 grados
+    std::transform(angulos.begin(), angulos.end(), angulos.begin(), [](double angle) {
+        return std::fmod(angle + 360, 360);
+    });
+
+    // Ordenar los puntos según los ángulos ajustados
+    std::vector<size_t> indices(angulos.size());
+    std::iota(indices.begin(), indices.end(), 0);
+    std::sort(indices.begin(), indices.end(), [&](size_t i, size_t j) {
+        return angulos[i] < angulos[j];
+    });
+
+    // Generar los nuevos vectores x e y ordenados
+    std::vector<double> x_ordenado(x.size()), y_ordenado(y.size());
+    for (size_t i = 0; i < indices.size(); ++i) {
+        x_ordenado[i] = x[indices[i]];
+        y_ordenado[i] = y[indices[i]];
+    }
+
+    // Mostrar los resultados
+    // std::cout << "x_ordenado: ";
+    // for (auto val : x_ordenado) {
+    //     std::cout << val << " ";
+    // }
+    // std::cout << std::endl;
+
+    // std::cout << "y_ordenado: ";
+    // for (auto val : y_ordenado) {
+    //     std::cout << val << " ";
+    // }
+    // std::cout << std::endl;
+
+//-----------------------------------------END ORDENAR PUTNOS ------------------
+    std::pair<double, double> promedios = calcularPromedios(x_ordenado, y_ordenado);
     double xc = promedios.first;
     double yc = promedios.second;
     double vf=0, vre=0, vl=0, vri=0;
     
-    std::pair<std::vector<double>, std::vector<double>> resultados = dis_ang(x, y, xc, yc);
+    std::pair<std::vector<double>, std::vector<double>> resultados = dis_ang(x_ordenado, y_ordenado, xc, yc);
     std::vector<double> distancias = resultados.first;
     std::vector<double> angulos_grados = resultados.second;
     std::vector<double> sigma_x(distancias.size(), 0.0); 
@@ -269,17 +334,17 @@ int main() {
     }
 
     //determinar el conjunto de X, Y y Z que se tienen que considerar, para este caso z=0.1
-    double margen = 0.009;
-    double z = 0.1;
+    double margen = 0.1;
+    double z = 0.5;
     // Crear el vector de salida
-    std::vector<double> vector_x;
-    std::vector<double> vector_y;
-    std::vector<double> vector_z;
+    std::vector<float> vector_x;
+    std::vector<float> vector_y;
+    std::vector<float> vector_z;
     // Copiar los elementos de la matriz al vector de salida
     for (int i = 0; i < xx.rows(); ++i) {
         for (int j = 0; j < xx.rows(); ++j) {
 
-            if (zz(i,j) >= z - margen && zz(i,j) <= z + margen){
+            if (zz(i,j) >= z){
                 vector_z.push_back(zz(i,j));
                 vector_x.push_back(xx(i,j));
                 vector_y.push_back(yy(i,j));
@@ -287,22 +352,34 @@ int main() {
             
         }
     }
+    //----------------------------------------------------CONVERSION A MM DE LAS COORDENADAS X, Y -------------------------------
+    for (size_t i = 0; i < vector_x.size(); ++i) {
+        vector_x[i] *= 1000; // Convertir de milímetros a metros
+        vector_y[i] *= 1000; // Convertir de milímetros a metros
+    }
 
+    //----------------------------------------END CONVERSION A MM DE LAS COORDENADAS X,Y ----------------------------------------
     std::cout << "Vector de salida: ";
     for (int i = 0; i < vector_z.size(); ++i) {
         std::cout << vector_z[i] << " ";
     }
-    std:
-
-
-
-
-    //--------------------------------------------------------------------------------------
-    for (int i = 0; i < xx.rows(); ++i) {
-        for (int j = 0; j < xx.cols(); ++j) {
-                std::cout << zz(i, j) << " ";
-            }
-            std::cout << std::endl;
+    std::cout << std::endl;
+    std::cout << "Vector de X: ";
+    for (int i = 0; i < vector_x.size(); ++i) {
+        std::cout << vector_x[i] << " ";
     }
-    return 0;
+    std::cout << std::endl;
+    std::cout << "Vector de Y: ";
+    for (int i = 0; i < vector_y.size(); ++i) {
+        std::cout << vector_y[i] << " ";
+    }
+    std::cout << std::endl;
+    //--------------------------------------------------------------------------------------
+    // for (int i = 0; i < xx.rows(); ++i) {
+    //     for (int j = 0; j < xx.cols(); ++j) {
+    //             std::cout << zz(i, j) << " ";
+    //         }
+    //         std::cout << std::endl;
+    // }
+    // return 0;
 }

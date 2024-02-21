@@ -126,16 +126,16 @@ void SpecificWorker::read_lidar()
     {
         try
         {
-            /*auto data = lidar3d_proxy->getLidarDataWithThreshold2d(params.LIDAR_NAME_LOW,
+            auto data = lidar3d_proxy->getLidarDataWithThreshold2d(params.LIDAR_NAME_LOW,
                                                                    params.MAX_LIDAR_LOW_RANGE,
                                                                    params.LIDAR_LOW_DECIMATION_FACTOR);
             auto data_helios = lidar3d1_proxy->getLidarDataWithThreshold2d(params.LIDAR_NAME_HIGH,
                                                                            params.MAX_LIDAR_HIGH_RANGE,
                                                                            params.LIDAR_HIGH_DECIMATION_FACTOR);
-                                                                           */
+                                                                          
 
-            RoboCompLidar3D::TData data;
-            RoboCompLidar3D::TData data_helios;
+/*             RoboCompLidar3D::TData data;
+            RoboCompLidar3D::TData data_helios; */
 
             // concatenate both lidars
             data.points.insert(data.points.end(), data_helios.points.begin(), data_helios.points.end());
@@ -243,7 +243,7 @@ RoboCompGridder::Result SpecificWorker::Gridder_getPaths_unlocked(RoboCompGridde
                 msg = "Djikstra path";
         }
     }
-    result.error_msg = msg;
+    result.errorMsg= msg;
     result.timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
     // If not success return result with empty paths, error message and timestamp
@@ -315,7 +315,7 @@ RoboCompGridder::Result SpecificWorker::Gridder_getPaths(RoboCompGridder::TPoint
         }
     }
     mutex_path.unlock();
-    result.error_msg = msg;
+    result.errorMsg = msg;
     result.timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
     // If not success return result with empty paths, error message and timestamp
@@ -416,6 +416,8 @@ void SpecificWorker::VisualElementsPub_setVisualObjects(RoboCompVisualElementsPu
     std::cout << "Period: " << data.period << std::endl;
     std::cout << "Objects:" << std::endl;
     */
+
+    grid.id_position_map.clear();
 
     for (const auto& obj : data.objects) {
         int objectId = obj.id;
