@@ -112,6 +112,8 @@ void SpecificWorker::compute() ///solo
         grid.clear();  // sets all cells to initial values
         grid.update_map(points, Eigen::Vector2f{0.0, 0.0}, params.MAX_LIDAR_RANGE);
         grid.update_costs( params.ROBOT_SEMI_WIDTH, true);     // not color all cells
+        grid.contabilizarPosicionActual();
+
     mutex_path.unlock();
 
     this->hz = fps.print("FPS:", 3000);
@@ -134,7 +136,7 @@ void SpecificWorker::read_lidar()
                                                                            params.LIDAR_HIGH_DECIMATION_FACTOR);
                                                                           
 
-/*             RoboCompLidar3D::TData data;
+/*          RoboCompLidar3D::TData data;
             RoboCompLidar3D::TData data_helios; */
 
             // concatenate both lidars
@@ -243,7 +245,7 @@ RoboCompGridder::Result SpecificWorker::Gridder_getPaths_unlocked(RoboCompGridde
                 msg = "Djikstra path";
         }
     }
-    result.errorMsg= msg;
+    result.error_msg= msg;
     result.timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
     // If not success return result with empty paths, error message and timestamp
@@ -315,7 +317,7 @@ RoboCompGridder::Result SpecificWorker::Gridder_getPaths(RoboCompGridder::TPoint
         }
     }
     mutex_path.unlock();
-    result.errorMsg = msg;
+    result.error_msg = msg;
     result.timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
     // If not success return result with empty paths, error message and timestamp
