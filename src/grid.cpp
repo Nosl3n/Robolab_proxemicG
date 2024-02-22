@@ -1012,8 +1012,6 @@ void Grid::set_cost_by_offset(std::vector<float> x_vector, std::vector<float> y_
         const Key key = point_to_key(position_2d);
         auto [_,cell] = get_cell(key);
 
-        cell.cost=cost_vector[i];
-        
         if(std::get<bool>(cell)){
             std::get<T&>(cell).cost = cost_vector[i];
 
