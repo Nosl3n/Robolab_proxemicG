@@ -10,6 +10,8 @@ VisualElementsPubTopic.Endpoints=tcp -p 0
 Lidar3DProxy = lidar3d:tcp -h localhost -p 11990
 Lidar3D1Proxy = lidar3d:tcp -h localhost -p 11991
 
+LidarOdometryProxy = lidarodometry:tcp -h localhost -p 12191
+
 # This property is used by the clients to connect to IceStorm.
 TopicManager.Proxy=IceStorm/TopicManager:default -p 9999
 

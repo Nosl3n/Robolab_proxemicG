@@ -1,13 +1,14 @@
 import "Lidar3D.idsl";
 import "Gridder.idsl";
 import "VisualElementsPub.idsl";
+import "LidarOdometry.idsl";
 
 Component gridder
 {
     Communications
     {
         implements Gridder;
-        requires Lidar3D, Lidar3D;
+        requires Lidar3D, Lidar3D, LidarOdometry;
         subscribesTo VisualElementsPub;
     };
     language Cpp11;

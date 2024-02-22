@@ -83,7 +83,7 @@ public:
         void update_map( const std::vector<Eigen::Vector3f> &points,
                          const Eigen::Vector2f &robot_in_grid,
                          float max_laser_range);
-        void update_costs(float robot_semi_width, bool color_all_cells=true);
+        void update_costs(float robot_semi_width, bool color_all_cells, std::pair<Eigen::Transform<double, 3, 1>, Eigen::Transform<double, 3, 1>> tf);
         inline std::tuple<bool, T &> get_cell(const Key &k);
         Key point_to_key(long int x, long int z) const;
         Key point_to_key(const QPointF &p) const;
@@ -152,6 +152,9 @@ public:
                                const Eigen::Vector2f &target_, float t_radius);
         void restore_source_target(const Key &source_key, const Key &target_key);
 
+        //TF point
+
+        Eigen::Vector2f transform_target_to_global_frame(const Eigen::Transform<double, 3, 1> &tf, const Eigen::Vector2f tp);
 
         //Submap operations
         std::vector<std::tuple<Grid::Key,Grid::T>> copy_submap(const Key &center, float radius);

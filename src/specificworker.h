@@ -103,7 +103,8 @@ public slots:
         DoubleBuffer<std::vector<Eigen::Vector3f>, std::vector<Eigen::Vector3f>> buffer_lidar_data;
         std::thread read_lidar_th;
         void read_lidar();
-
+        
+        
         // grid
         Grid grid;
 
@@ -124,6 +125,7 @@ public slots:
         //void adapt_grid_size(const Target &target,  const RoboCompGridPlanner::Points &path);   // EXPERIMENTAL
 
 void VisualElementsPub_setVisualObjects(RoboCompVisualElementsPub::TData data);
+std::optional<std::pair<Eigen::Transform<double, 3, 1>, Eigen::Transform<double, 3, 1>>> get_robot_pose_and_change();
 
 
 };

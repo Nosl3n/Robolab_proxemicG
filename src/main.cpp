@@ -85,6 +85,7 @@
 #include <visualelementspubI.h>
 
 #include <Camera360RGB.h>
+#include <FullPoseEstimation.h>
 
 
 
@@ -134,6 +135,7 @@ int ::gridder::run(int argc, char* argv[])
 
 	RoboCompLidar3D::Lidar3DPrxPtr lidar3d_proxy;
 	RoboCompLidar3D::Lidar3DPrxPtr lidar3d1_proxy;
+	RoboCompLidarOdometry::LidarOdometryPrxPtr lidarodometry_proxy;
 
 	string proxy, tmp;
 	initialize();
@@ -170,6 +172,22 @@ int ::gridder::run(int argc, char* argv[])
 	rInfo("Lidar3DProxy1 initialized Ok!");
 
 
+	try
+	{
+		if (not GenericMonitor::configGetString(communicator(), prefix, "LidarOdometryProxy", proxy, ""))
+		{
+			cout << "[" << PROGRAM_NAME << "]: Can't read configuration for proxy LidarOdometryProxy\n";
+		}
+		lidarodometry_proxy = Ice::uncheckedCast<RoboCompLidarOdometry::LidarOdometryPrx>( communicator()->stringToProxy( proxy ) );
+	}
+	catch(const Ice::Exception& ex)
+	{
+		cout << "[" << PROGRAM_NAME << "]: Exception creating proxy LidarOdometry: " << ex;
+		return EXIT_FAILURE;
+	}
+	rInfo("LidarOdometryProxy initialized Ok!");
+
+
 	IceStorm::TopicManagerPrxPtr topicManager;
 	try
 	{
@@ -187,7 +205,7 @@ int ::gridder::run(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-	tprx = std::make_tuple(lidar3d_proxy,lidar3d1_proxy);
+	tprx = std::make_tuple(lidar3d_proxy,lidar3d1_proxy,lidarodometry_proxy);
 	SpecificWorker *worker = new SpecificWorker(tprx, startup_check_flag);
 	//Monitor thread
 	SpecificMonitor *monitor = new SpecificMonitor(worker,communicator());

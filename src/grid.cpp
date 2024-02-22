@@ -657,8 +657,15 @@ inline double Grid::heuristicL1(const Key &a, const Key &b) const
 }
 
 /////////////////////////////// COSTS /////////////////////////////////////////////////////////
-void Grid::update_costs(float robot_semi_width, bool color_all_cells)
+void Grid::update_costs(float robot_semi_width, bool color_all_cells, std::pair<Eigen::Transform<double, 3, 1>, Eigen::Transform<double, 3, 1>> tf)
 {
+    // Crear el vector de salida
+    static std::vector<float> vector_x;
+    static std::vector<float> vector_y;
+    static std::vector<float> vector_z;
+    static bool complete = false;
+    static std::pair<Eigen::Transform<double, 3, 1>, Eigen::Transform<double, 3, 1>> last_tf;
+
     static QBrush free_brush(QColor(params.free_color));
     static QBrush occ_brush(QColor(params.occupied_color));
     static QBrush orange_brush(QColor("Orange"));
@@ -722,234 +729,268 @@ void Grid::update_costs(float robot_semi_width, bool color_all_cells)
     float average_second = sum_second / id_position_map.size();
 
     std::cout << "CENTER: " << average_first << " | " << average_second << std::endl;
-    //------------------------------------------------- GENERACION DE LA GAUSSIANA - NELSON -------------------------------
-    // Iterar sobre el mapa y extraer los valores de X e Y
-
-    std::vector<double> x;
-    std::vector<double> y;
-
-    for (const auto& pair : id_position_map) {
-        double x_1 = pair.second.first;
-        double y_1 = pair.second.second;
-        x.push_back(x_1);
-        y.push_back(y_1);
-    }
-
-
-    // id_position_map
-    // x.push_back
-
-    // std::vector<double> x = {3000, 2000, 2000}; // Ejemplo de valores para x
-    // std::vector<double> y = {2000, 1000, 900}; // Ejemplo de valores para y
-    // //--------------------------------CONVERSION A METROS -------------------------------------------
-    for (size_t i = 0; i < x.size(); ++i) {
-        x[i] /= 1000; // Convertir de milímetros a metros
-        y[i] /= 1000; // Convertir de milímetros a metros
-    }
-//---------------------------------------- ORDENAR PUNTOS ----------------------
-    //Calcular el centro de masa
-    std::vector<double> cm = calcularCentroDeMasa(x, y);
-
-    // Calcular los ángulos con respecto al centro de masa (en grados)
-    std::vector<double> angulos = calcularAngulos(x, y, cm);
-
-    // Ajustar los ángulos para que estén en el rango de 0 a 360 grados
-    std::transform(angulos.begin(), angulos.end(), angulos.begin(), [](double angle) {
-        return std::fmod(angle + 360, 360);
-    });
-
-    // Ordenar los puntos según los ángulos ajustados
-    std::vector<size_t> indices(angulos.size());
-    std::iota(indices.begin(), indices.end(), 0);
-    std::sort(indices.begin(), indices.end(), [&](size_t i, size_t j) {
-        return angulos[i] < angulos[j];
-    });
-
-    // Generar los nuevos vectores x e y ordenados
-    std::vector<double> x_ordenado(x.size()), y_ordenado(y.size());
-    for (size_t i = 0; i < indices.size(); ++i) {
-        x_ordenado[i] = x[indices[i]];
-        y_ordenado[i] = y[indices[i]];
-    }
-
-    // Mostrar los resultados
-    // std::cout << "x_ordenado: ";
-    // for (auto val : x_ordenado) {
-    //     std::cout << val << " ";
-    // }
-    // std::cout << std::endl;
-
-    // std::cout << "y_ordenado: ";
-    // for (auto val : y_ordenado) {
-    //     std::cout << val << " ";
-    // }
-    // std::cout << std::endl;
-
-//-----------------------------------------END ORDENAR PUTNOS ------------------
-    std::pair<double, double> promedios = calcularPromedios(x_ordenado, y_ordenado);
-    double xc = promedios.first;
-    double yc = promedios.second;
-    double vf=0, vre=0, vl=0, vri=0;
     
-    std::pair<std::vector<double>, std::vector<double>> resultados = dis_ang(x_ordenado, y_ordenado, xc, yc);
-    std::vector<double> distancias = resultados.first;
-    std::vector<double> angulos_grados = resultados.second;
-    std::vector<double> sigma_x(distancias.size(), 0.0); 
-    std::vector<double> sigma_y(distancias.size(), 0.0); 
+    
+    
+    
+    
+    
+    
+    if(not complete)
+    {
+        //------------------------------------------------- GENERACION DE LA GAUSSIANA - NELSON -------------------------------
+        // Iterar sobre el mapa y extraer los valores de X e Y
 
-    for (int i = 0; i < distancias.size(); ++i) {
-        if (angulos_grados[i] >= 0 && angulos_grados[i] <= 180) {
-            sigma_y[i] = std::abs((distancias[i]) * std::sin((angulos_grados[i]) * M_PI / 180)) + vf;
-            sigma_x[i] = std::abs((distancias[i]) * std::cos((angulos_grados[i]) * M_PI / 180)) + vf;
-        } else {
-            sigma_y[i] = std::abs((distancias[i]) * std::sin((angulos_grados[i]) * M_PI / 180)) + vre;
-            sigma_x[i] = std::abs((distancias[i]) * std::cos((angulos_grados[i]) * M_PI / 180)) + vre;
+        std::vector<double> x;
+        std::vector<double> y;
+
+        for (const auto& pair : id_position_map) {
+            double x_1 = pair.second.first;
+            double y_1 = pair.second.second;
+            x.push_back(x_1);
+            y.push_back(y_1);
         }
-        if (angulos_grados[i] >= 90 && angulos_grados[i] <= 270) {
-            sigma_y[i] = std::abs((distancias[i]) * std::sin((angulos_grados[i]) * M_PI / 180)) + vl;
-            sigma_x[i] = std::abs((distancias[i]) * std::cos((angulos_grados[i]) * M_PI / 180)) + vl;
-        } else {
-            sigma_y[i] = std::abs((distancias[i]) * std::sin((angulos_grados[i]) * M_PI / 180)) + vri;
-            sigma_x[i] = std::abs((distancias[i]) * std::cos((angulos_grados[i]) * M_PI / 180)) + vri;
+
+        // id_position_map
+        // x.push_back
+
+        // std::vector<double> x = {3000, 2000, 2000}; // Ejemplo de valores para x
+        // std::vector<double> y = {2000, 1000, 900}; // Ejemplo de valores para y
+        // //--------------------------------CONVERSION A METROS -------------------------------------------
+        for (size_t i = 0; i < x.size(); ++i) {
+            x[i] /= 1000; // Convertir de milímetros a metros
+            y[i] /= 1000; // Convertir de milímetros a metros
         }
-    }
-    sigma_x.push_back(sigma_x[0]);
-    sigma_y.push_back(sigma_y[0]);
+    //---------------------------------------- ORDENAR PUNTOS ----------------------
+        //Calcular el centro de masa
+        std::vector<double> cm = calcularCentroDeMasa(x, y);
 
-    // Determinar las distancias
-    std::vector<double> distan(distancias.size(), 0.0);
-    for (size_t i = 0; i < angulos_grados.size(); ++i) {
-        if (i == angulos_grados.size() - 1) {
-            distan[i] = 360 - angulos_grados[i] + angulos_grados[0];
-        } else {
-            distan[i] = angulos_grados[i + 1] - angulos_grados[i];
+        // Calcular los ángulos con respecto al centro de masa (en grados)
+        std::vector<double> angulos = calcularAngulos(x, y, cm);
+
+        // Ajustar los ángulos para que estén en el rango de 0 a 360 grados
+        std::transform(angulos.begin(), angulos.end(), angulos.begin(), [](double angle) {
+            return std::fmod(angle + 360, 360);
+        });
+
+        // Ordenar los puntos según los ángulos ajustados
+        std::vector<size_t> indices(angulos.size());
+        std::iota(indices.begin(), indices.end(), 0);
+        std::sort(indices.begin(), indices.end(), [&](size_t i, size_t j) {
+            return angulos[i] < angulos[j];
+        });
+
+        // Generar los nuevos vectores x e y ordenados
+        std::vector<double> x_ordenado(x.size()), y_ordenado(y.size());
+        for (size_t i = 0; i < indices.size(); ++i) {
+            x_ordenado[i] = x[indices[i]];
+            y_ordenado[i] = y[indices[i]];
         }
-    }
 
-    std::vector<double> distancias_1(distan.size() + 1); // Vector para almacenar las distancias
+        // Mostrar los resultados
+        // std::cout << "x_ordenado: ";
+        // for (auto val : x_ordenado) {
+        //     std::cout << val << " ";
+        // }
+        // std::cout << std::endl;
 
-    // Generar un valor de cero al comienzo del arreglo
-    distancias_1[0] = 0;
+        // std::cout << "y_ordenado: ";
+        // for (auto val : y_ordenado) {
+        //     std::cout << val << " ";
+        // }
+        // std::cout << std::endl;
 
-    // Llenar el resto del arreglo con los valores de distan
-    for (size_t i = 1; i < distancias_1.size(); ++i) {
-        distancias_1[i] = distan[i - 1];
-    }
+    //-----------------------------------------END ORDENAR PUTNOS ------------------
+        std::pair<double, double> promedios = calcularPromedios(x_ordenado, y_ordenado);
+        double xc = promedios.first;
+        double yc = promedios.second;
+        double vf=0, vre=0, vl=0, vri=0;
+        
+        std::pair<std::vector<double>, std::vector<double>> resultados = dis_ang(x_ordenado, y_ordenado, xc, yc);
+        std::vector<double> distancias = resultados.first;
+        std::vector<double> angulos_grados = resultados.second;
+        std::vector<double> sigma_x(distancias.size(), 0.0); 
+        std::vector<double> sigma_y(distancias.size(), 0.0); 
 
-    std::vector<double> sigma_xx(360), sigma_yy(360); // Vectores para almacenar los valores de sigma_xx y sigma_yy
-
-    double delta_ang = 1;
-    size_t j = 1;
-    size_t k = 0;
-    double cont = 0;
-    double angulo = 0;
-
-    for (size_t i = 0; i < 360; ++i) {
-        if (i > distancias_1[j] + angulo) {
-            angulo = distancias_1[j] + angulo;
-            ++j;
-            ++k;
-            cont = 0;
-        }
-        double t1 = distancias_1[j] - cont;
-        double t2 = cont;
-        cont += delta_ang;
-        sigma_xx[i] = ((t1 / distancias_1[j]) * sigma_x[k]) + ((t2 / distancias_1[j]) * sigma_x[k + 1]);
-        sigma_yy[i] = ((t1 / distancias_1[j]) * sigma_y[k]) + ((t2 / distancias_1[j]) * sigma_y[k + 1]);
-    }
-    //hay cierta discrepancia en los valores, a estos vectores de sigma_xx y sigma_yy, sel falta el ultimo valor segun matlab.
-    // generando el mesh.
-
-    double step = 0.1; // Tamaño del paso
-    double lower_limit_x = xc - 5; // Límite inferior para x
-    double upper_limit_x = xc + 5; // Límite superior para x
-
-    double lower_limit_y = yc - 5; // Límite inferior para y
-    double upper_limit_y = yc + 5; // Límite superior para y
-
-    int num_points = static_cast<int>((upper_limit_x - lower_limit_x) / step) + 1; // Número de puntos en cada dirección
-
-    // Crear vectores para almacenar los valores de x y y
-    Eigen::VectorXd x_values(num_points);
-    Eigen::VectorXd y_values(num_points);
-
-    // Llenar los vectores con valores desde lower_limit hasta upper_limit
-    for (int i = 0; i < num_points; ++i) {
-        x_values(i) = lower_limit_x + i * step;
-        y_values(i) = lower_limit_y + i * step;
-    }
-
-    // Crear matrices meshgrid xx y yy
-    Eigen::MatrixXd xx = x_values.replicate(1, num_points);
-    Eigen::MatrixXd yy = y_values.transpose().replicate(num_points, 1);
-
-    // Imprimir las dimensiones de las matrices
-    // std::cout << "Tamaño de la matriz xx: " << xx.rows() << "x" << xx.cols() << std::endl;
-    // std::cout << "Tamaño de la matriz yy: " << yy.rows() << "x" << yy.cols() << std::endl;
-    yy.transposeInPlace();
-    xx.transposeInPlace();
-
-    //GRNERAR LAS VARIANZAS EN CADA PUNTO CADA 1°
-
-    // Declarar matrices para almacenar varianzas
-    Eigen::MatrixXd varianzax(xx.rows(), xx.rows());
-    Eigen::MatrixXd varianzay(yy.rows(), yy.rows());
-
-    for (int i = 0; i < xx.rows(); ++i) {
-        for (int j = 0; j < xx.rows(); ++j) {
-            double theta = atan2(yy(i, j) - yc, xx(i, j) - xc);
-            theta = std::fmod(std::round(theta * (180 / M_PI)), 360); // Conversión a grados y módulo 360
-
-            int alpha = static_cast<int>(theta); // Redondear al entero más cercano
-            if (alpha >= 360) {
-                alpha = 360;
+        for (int i = 0; i < distancias.size(); ++i) {
+            if (angulos_grados[i] >= 0 && angulos_grados[i] <= 180) {
+                sigma_y[i] = std::abs((distancias[i]) * std::sin((angulos_grados[i]) * M_PI / 180)) + vf;
+                sigma_x[i] = std::abs((distancias[i]) * std::cos((angulos_grados[i]) * M_PI / 180)) + vf;
+            } else {
+                sigma_y[i] = std::abs((distancias[i]) * std::sin((angulos_grados[i]) * M_PI / 180)) + vre;
+                sigma_x[i] = std::abs((distancias[i]) * std::cos((angulos_grados[i]) * M_PI / 180)) + vre;
             }
-            if (alpha <= 1) {
-                alpha = 1;
+            if (angulos_grados[i] >= 90 && angulos_grados[i] <= 270) {
+                sigma_y[i] = std::abs((distancias[i]) * std::sin((angulos_grados[i]) * M_PI / 180)) + vl;
+                sigma_x[i] = std::abs((distancias[i]) * std::cos((angulos_grados[i]) * M_PI / 180)) + vl;
+            } else {
+                sigma_y[i] = std::abs((distancias[i]) * std::sin((angulos_grados[i]) * M_PI / 180)) + vri;
+                sigma_x[i] = std::abs((distancias[i]) * std::cos((angulos_grados[i]) * M_PI / 180)) + vri;
             }
-
-            varianzax(i, j) = sigma_xx[alpha];
-            varianzay(i, j) = sigma_yy[alpha];
         }
-    }
+        sigma_x.push_back(sigma_x[0]);
+        sigma_y.push_back(sigma_y[0]);
 
-    // Calcular la gaussiana
-    Eigen::MatrixXd zz(xx.rows(), xx.cols());
-
-    for (int i = 0; i < xx.rows(); ++i) {
-        for (int j = 0; j < xx.cols(); ++j) {
-            double exponente_x = std::pow(xx(i, j) - xc, 2) / (2 * std::pow(varianzax(i, j), 2));
-            double exponente_y = std::pow(yy(i, j) - yc, 2) / (2 * std::pow(varianzay(i, j), 2));
-
-            zz(i, j) = std::exp(-exponente_x - exponente_y);
+        // Determinar las distancias
+        std::vector<double> distan(distancias.size(), 0.0);
+        for (size_t i = 0; i < angulos_grados.size(); ++i) {
+            if (i == angulos_grados.size() - 1) {
+                distan[i] = 360 - angulos_grados[i] + angulos_grados[0];
+            } else {
+                distan[i] = angulos_grados[i + 1] - angulos_grados[i];
+            }
         }
+
+        std::vector<double> distancias_1(distan.size() + 1); // Vector para almacenar las distancias
+
+        // Generar un valor de cero al comienzo del arreglo
+        distancias_1[0] = 0;
+
+        // Llenar el resto del arreglo con los valores de distan
+        for (size_t i = 1; i < distancias_1.size(); ++i) {
+            distancias_1[i] = distan[i - 1];
+        }
+
+        std::vector<double> sigma_xx(360), sigma_yy(360); // Vectores para almacenar los valores de sigma_xx y sigma_yy
+
+        double delta_ang = 1;
+        size_t j = 1;
+        size_t k = 0;
+        double cont = 0;
+        double angulo = 0;
+
+        for (size_t i = 0; i < 360; ++i) {
+            if (i > distancias_1[j] + angulo) {
+                angulo = distancias_1[j] + angulo;
+                ++j;
+                ++k;
+                cont = 0;
+            }
+            double t1 = distancias_1[j] - cont;
+            double t2 = cont;
+            cont += delta_ang;
+            sigma_xx[i] = ((t1 / distancias_1[j]) * sigma_x[k]) + ((t2 / distancias_1[j]) * sigma_x[k + 1]);
+            sigma_yy[i] = ((t1 / distancias_1[j]) * sigma_y[k]) + ((t2 / distancias_1[j]) * sigma_y[k + 1]);
+        }
+        //hay cierta discrepancia en los valores, a estos vectores de sigma_xx y sigma_yy, sel falta el ultimo valor segun matlab.
+        // generando el mesh.
+
+        double step = 0.1; // Tamaño del paso
+        double lower_limit_x = xc - 5; // Límite inferior para x
+        double upper_limit_x = xc + 5; // Límite superior para x
+
+        double lower_limit_y = yc - 5; // Límite inferior para y
+        double upper_limit_y = yc + 5; // Límite superior para y
+
+        int num_points = static_cast<int>((upper_limit_x - lower_limit_x) / step) + 1; // Número de puntos en cada dirección
+
+        // Crear vectores para almacenar los valores de x y y
+        Eigen::VectorXd x_values(num_points);
+        Eigen::VectorXd y_values(num_points);
+
+        // Llenar los vectores con valores desde lower_limit hasta upper_limit
+        for (int i = 0; i < num_points; ++i) {
+            x_values(i) = lower_limit_x + i * step;
+            y_values(i) = lower_limit_y + i * step;
+        }
+
+        // Crear matrices meshgrid xx y yy
+        Eigen::MatrixXd xx = x_values.replicate(1, num_points);
+        Eigen::MatrixXd yy = y_values.transpose().replicate(num_points, 1);
+
+        // Imprimir las dimensiones de las matrices
+        // std::cout << "Tamaño de la matriz xx: " << xx.rows() << "x" << xx.cols() << std::endl;
+        // std::cout << "Tamaño de la matriz yy: " << yy.rows() << "x" << yy.cols() << std::endl;
+        yy.transposeInPlace();
+        xx.transposeInPlace();
+
+        //GRNERAR LAS VARIANZAS EN CADA PUNTO CADA 1°
+
+        // Declarar matrices para almacenar varianzas
+        Eigen::MatrixXd varianzax(xx.rows(), xx.rows());
+        Eigen::MatrixXd varianzay(yy.rows(), yy.rows());
+
+        for (int i = 0; i < xx.rows(); ++i) {
+            for (int j = 0; j < xx.rows(); ++j) {
+                double theta = atan2(yy(i, j) - yc, xx(i, j) - xc);
+                theta = std::fmod(std::round(theta * (180 / M_PI)), 360); // Conversión a grados y módulo 360
+
+                int alpha = static_cast<int>(theta); // Redondear al entero más cercano
+                if (alpha >= 360) {
+                    alpha = 360;
+                }
+                if (alpha <= 1) {
+                    alpha = 1;
+                }
+
+                varianzax(i, j) = sigma_xx[alpha];
+                varianzay(i, j) = sigma_yy[alpha];
+            }
+        }
+
+        // Calcular la gaussiana
+        Eigen::MatrixXd zz(xx.rows(), xx.cols());
+
+        for (int i = 0; i < xx.rows(); ++i) {
+            for (int j = 0; j < xx.cols(); ++j) {
+                double exponente_x = std::pow(xx(i, j) - xc, 2) / (2 * std::pow(varianzax(i, j), 2));
+                double exponente_y = std::pow(yy(i, j) - yc, 2) / (2 * std::pow(varianzay(i, j), 2));
+
+                zz(i, j) = std::exp(-exponente_x - exponente_y);
+            }
+        }
+
+        //determinar el conjunto de X, Y y Z que se tienen que considerar, para este caso z=0.1
+        double z = 0.1;
+        
+
+        //TODO: Return vector creation
+        // // Crear el vector de salida
+        // std::vector<float> vector_x;
+        // std::vector<float> vector_y;
+        // std::vector<float> vector_z;
+
+
+        // Copiar los elementos de la matriz al vector de salida
+        for (int i = 0; i < xx.rows(); ++i) {
+            for (int j = 0; j < xx.rows(); ++j) {
+
+                if (zz(i,j) >= z){
+                    vector_z.push_back(zz(i,j));
+                    vector_x.push_back(xx(i,j));
+                    vector_y.push_back(yy(i,j));
+                } 
+                
+            }
+        }
+        //----------------------------------------------------CONVERSION A MM DE LAS COORDENADAS X, Y -------------------------------
+        for (size_t i = 0; i < vector_x.size(); ++i) {
+            vector_x[i] *= 1000; // Convertir de milímetros a metros
+            vector_y[i] *= 1000; // Convertir de milímetros a metros
+            vector_z[i] *= 100; // Convertir coste max = 100
+        }
+        complete = true;
+        qInfo()<< "----------------------Gaussiana calculada-------------------------";
     }
+    else
+    {   
+        auto v_x = vector_x;
+        auto v_y = vector_y;
+        auto v_z = vector_z;
 
-    //determinar el conjunto de X, Y y Z que se tienen que considerar, para este caso z=0.1
-    double z = 0.1;
-    // Crear el vector de salida
-    std::vector<float> vector_x;
-    std::vector<float> vector_y;
-    std::vector<float> vector_z;
-    // Copiar los elementos de la matriz al vector de salida
-    for (int i = 0; i < xx.rows(); ++i) {
-        for (int j = 0; j < xx.rows(); ++j) {
+        qInfo()<< "----------------------Transformacion gaussiana-------------------------";
+    
+        for (size_t i = 0; i < vector_x.size(); ++i) {
+            //Eigen::Vector2f Grid::transform_target_to_global_frame(const Eigen::Transform<double, 3, 1> &tf, const Eigen::Vector2f tp)
+            Eigen::Vector2f trans_point = transform_target_to_global_frame(tf.first, Eigen::Vector2f(vector_x[i],vector_y[i]));
+            v_x[i] = trans_point.x();
+            v_y[i] = trans_point.y();
 
-            if (zz(i,j) >= z){
-                vector_z.push_back(zz(i,j));
-                vector_x.push_back(xx(i,j));
-                vector_y.push_back(yy(i,j));
-            } 
+        }
             
-        }
+        set_cost_by_offset(v_x, v_y, v_z);
+        return;
     }
-    //----------------------------------------------------CONVERSION A MM DE LAS COORDENADAS X, Y -------------------------------
-    for (size_t i = 0; i < vector_x.size(); ++i) {
-        vector_x[i] *= 1000; // Convertir de milímetros a metros
-        vector_y[i] *= 1000; // Convertir de milímetros a metros
-        vector_z[i] *= 100; // Convertir de milímetros a metros
-    }
-
     //----------------------------------------END CONVERSION A MM DE LAS COORDENADAS X,Y ----------------------------------------
 
     set_cost_by_offset(vector_x, vector_y, vector_z);
@@ -969,8 +1010,10 @@ void Grid::set_cost_by_offset(std::vector<float> x_vector, std::vector<float> y_
     for (int i = 0; i < x_vector.size(); ++i) {
         const Eigen::Vector2f position_2d(x_vector[i], y_vector[i]);
         const Key key = point_to_key(position_2d);
-        auto cell = get_cell(key);
+        auto [_,cell] = get_cell(key);
 
+        cell.cost=cost_vector[i];
+        
         if(std::get<bool>(cell)){
             std::get<T&>(cell).cost = cost_vector[i];
 
@@ -1446,6 +1489,17 @@ std::vector<double> Grid::calcularAngulos(const std::vector<double>& x, const st
     }
     return angulos;
 }
+
+Eigen::Vector2f Grid::transform_target_to_global_frame(const Eigen::Transform<double, 3, 1> &tf, const Eigen::Vector2f tp)
+{
+    qInfo() << __FUNCTION__ <<  "Original point: " << tp.x() << tp.y();
+    Eigen::Vector2f transformed_point =
+            (tf.inverse().matrix() * Eigen::Vector4d(tp.x() / 1000.0, tp.y() / 1000.0, 0.0, 1.0) * 1000.0).head(2).cast<float>();
+    
+    qInfo() << __FUNCTION__ <<  "Final Point: " << transformed_point.x() <<transformed_point.y();
+    return transformed_point;
+}
+
 
 //----------------------------------------------- END ORDENAR PUNTOS -------
 

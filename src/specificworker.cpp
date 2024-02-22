@@ -94,6 +94,16 @@ void SpecificWorker::initialize(int period)  /// se repite una vez
         if(not params.DISPLAY)
             hide();
 		timer.start(params.PERIOD);
+
+        //Reset odometry
+        try
+        { 
+            lidarodometry_proxy->reset();
+        }
+        catch (const Ice::Exception &e)
+        {
+            std::cout << "Error reading from LidarOdometry" << e << std::endl;
+        }
 	}
 
     grid.id_position_map[1] = std::make_pair(-1000, 1000);
@@ -106,12 +116,27 @@ void SpecificWorker::compute() ///solo
     auto res_ = buffer_lidar_data.try_get();
     if (not res_.has_value())  {   /*qWarning() << "No data Lidar";*/ return; }
     auto points = res_.value();
+    
+
+
+    std::pair<Eigen::Transform<double, 3, 1>, Eigen::Transform<double, 3, 1>> robot_pose_and_change;
+
+    if(auto res = get_robot_pose_and_change(); res.has_value())
+        robot_pose_and_change = res.value();
+    else
+    {
+        qWarning() << __FUNCTION__ << "No robot pose available. Returning. Check LidarOdometry component status";
+        return;
+    }
+
+    // /// transform target to robot's frame
+    // target = transform_target_to_global_frame(robot_pose_and_change.first, target);    // transform target to robot's frame
 
     /// clear grid and update it
     mutex_path.lock();
         grid.clear();  // sets all cells to initial values
         grid.update_map(points, Eigen::Vector2f{0.0, 0.0}, params.MAX_LIDAR_RANGE);
-        grid.update_costs( params.ROBOT_SEMI_WIDTH, true);     // not color all cells
+        grid.update_costs( params.ROBOT_SEMI_WIDTH, true, robot_pose_and_change);     // not color all cells
     mutex_path.unlock();
 
     this->hz = fps.print("FPS:", 3000);
@@ -452,4 +477,32 @@ int SpecificWorker::startup_check()
     std::cout << "Startup check" << std::endl;
     QTimer::singleShot(200, qApp, SLOT(quit()));
     return 0;
+}
+
+std::optional<std::pair<Eigen::Transform<double, 3, 1>, Eigen::Transform<double, 3, 1>>> SpecificWorker::get_robot_pose_and_change()
+{
+    Eigen::Transform<double, 3, 1> robot_pose;
+    Eigen::Transform<double, 3, 1> robot_change;
+    try
+    {
+        //  auto pose = lidarodometry_proxy->getFullPoseMatrix();
+        const auto pose_and_change = lidarodometry_proxy->getPoseAndChange();
+        const auto &pose = pose_and_change.pose;
+        const auto &change = pose_and_change.change;
+        robot_pose.matrix() << pose.m00, pose.m01, pose.m02, pose.m03,
+                               pose.m10, pose.m11, pose.m12, pose.m13,
+                               pose.m20, pose.m21, pose.m22, pose.m23,
+                               pose.m30, pose.m31, pose.m32, pose.m33;
+        robot_change.matrix() << change.m00, change.m01, change.m02, change.m03,
+                                 change.m10, change.m11, change.m12, change.m13,
+                                 change.m20, change.m21, change.m22, change.m23,
+                                 change.m30, change.m31, change.m32, change.m33;
+        // qInfo() << __FUNCTION__ << "Odometry Update";
+    }
+    catch (const Ice::Exception &e)
+    {
+        std::cout << "Error reading from LidarOdometry" << e << std::endl;
+        return {};
+    }
+    return std::make_pair(robot_pose, robot_change);
 }
