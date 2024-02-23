@@ -1380,6 +1380,41 @@ void Grid::set_submap(const Key &center, float radius, bool setFree)
 
 ///--------------------------------NELSON COSAS ---------------------------------
 
+void Grid::contabilizarPosicionActual(){
+    const Eigen::Vector2f position_2d(0, 0);
+    const Key key = point_to_key(position_2d);
+    auto cell = get_cell(key);
+
+    float actualCost = std::get<T&>(cell).cost;
+
+    if(actualCost <= 25)
+    {
+        niveles[0]++;
+    }
+    else if(actualCost <= 50)
+    {
+        niveles[1]++;
+    }
+    else if (actualCost <= 75)
+    {
+        niveles[2]++;
+    }
+    else if(actualCost <= 100)
+        niveles[3]++;
+
+    int totalIteraciones = niveles[0] + niveles[1] + niveles[2] + niveles[3];
+
+    if (totalIteraciones == 0) {
+        std::cout << "No hay iteraciones para calcular porcentajes." << std::endl;
+        return;
+    }
+
+    std::cout << "Porcentaje de veces por debajo de 25: " << static_cast<float>(niveles[0]) / totalIteraciones * 100 << "%" << std::endl;
+    std::cout << "Porcentaje de veces por debajo de 50: " << static_cast<float>(niveles[1]) / totalIteraciones * 100 << "%" << std::endl;
+    std::cout << "Porcentaje de veces por debajo de 75: " << static_cast<float>(niveles[2]) / totalIteraciones * 100 << "%" << std::endl;
+    std::cout << "Porcentaje de veces por debajo de 100: " << static_cast<float>(niveles[3]) / totalIteraciones * 100 << "%" << std::endl;
+}
+
 // Función para convertir grados a radianes
 double Grid::deg2rad(double degrees) {
     double radian = degrees * M_PI / 180.0;

@@ -44,6 +44,7 @@ class Grid
 
 public:
         std::map<int, std::pair<float, float>> id_position_map;
+        void contabilizarPosicionActual();
 
         struct T
         {
@@ -188,6 +189,7 @@ public:
         std::pair<std::vector<double>, std::vector<double>> dis_ang(std::vector<double> x, std::vector<double> y, double xc, double yc);
         std::vector<double> calcularCentroDeMasa(const std::vector<double>& x, const std::vector<double>& y);
         std::vector<double> calcularAngulos(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& cm);
+        std::map<int, int> niveles;
 
 
         //----------------------------------------- END -----------------------------------------------------------
