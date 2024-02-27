@@ -191,6 +191,7 @@ public:
         std::vector<double> calcularAngulos(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& cm);
         std::map<int, int> niveles;
 
+        std::tuple<std::vector<double>, std::vector<double>, std::vector<double>> rotarGaussiana(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& z, double angulo, double cmx, double cmy);
 
         //----------------------------------------- END -----------------------------------------------------------
 

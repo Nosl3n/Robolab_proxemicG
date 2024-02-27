@@ -136,9 +136,8 @@ void SpecificWorker::compute() ///solo
     mutex_path.lock();
         grid.clear();  // sets all cells to initial values
         grid.update_map(points, Eigen::Vector2f{0.0, 0.0}, params.MAX_LIDAR_RANGE);
-        grid.update_costs( params.ROBOT_SEMI_WIDTH, true);     // not color all cells
+        grid.update_costs( params.ROBOT_SEMI_WIDTH, true, robot_pose_and_change);
         grid.contabilizarPosicionActual();
-
     mutex_path.unlock();
 
     this->hz = fps.print("FPS:", 3000);

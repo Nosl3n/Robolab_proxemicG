@@ -660,9 +660,9 @@ inline double Grid::heuristicL1(const Key &a, const Key &b) const
 void Grid::update_costs(float robot_semi_width, bool color_all_cells, std::pair<Eigen::Transform<double, 3, 1>, Eigen::Transform<double, 3, 1>> tf)
 {
     // Crear el vector de salida
-    static std::vector<float> vector_x;
-    static std::vector<float> vector_y;
-    static std::vector<float> vector_z;
+    static std::vector<double> vector_x;
+    static std::vector<double> vector_y;
+    static std::vector<double> vector_z;
     static bool complete = false;
     static std::pair<Eigen::Transform<double, 3, 1>, Eigen::Transform<double, 3, 1>> last_tf;
 
@@ -684,6 +684,8 @@ void Grid::update_costs(float robot_semi_width, bool color_all_cells, std::pair<
                   {50, 25, white, &Grid::neighboors_8},
                   {25, 5,  white, &Grid::neighboors_16}};
 
+    
+
     // we assume the grid has been cleared before. All free cells have cost 1
 
     // if not free, set cost to 100. These are cells detected by the  Lidar.
@@ -692,6 +694,7 @@ void Grid::update_costs(float robot_semi_width, bool color_all_cells, std::pair<
         v.cost = params.occupied_cost;
         v.tile->setBrush(occ_brush);
     }
+    
 
     const auto final_ranges = color_all_cells ? wall_ranges : wall_ranges_no_color;
 
@@ -711,29 +714,35 @@ void Grid::update_costs(float robot_semi_width, bool color_all_cells, std::pair<
                 cell.tile->setBrush(brush);
             }
 
-    if(!id_position_map.size())
-        return;
 
-    // Inicializa las sumas
-    float sum_first = 0.0;
-    float sum_second = 0.0;
 
-    // Itera sobre el map y suma los valores
-    for (const auto& entry : id_position_map) {
-        sum_first += entry.second.first;    // Suma los primeros valores del pair
-        sum_second += entry.second.second;   // Suma los segundos valores del pair
-    }
 
-    // Calcula los promedios
-    float average_first = sum_first / id_position_map.size();
-    float average_second = sum_second / id_position_map.size();
+//     /*-----------------------CODIGO NELSON------------------------------*/
 
-    std::cout << "CENTER: " << average_first << " | " << average_second << std::endl;
+
+    // if(!id_position_map.size())
+    //     return;
+
+    // // Inicializa las sumas
+    // float sum_first = 0.0;
+    // float sum_second = 0.0;
+
+    // // // Itera sobre el map y suma los valores
+    // for (const auto& entry : id_position_map) {
+    //     sum_first += entry.second.first;    // Suma los primeros valores del pair
+    //     sum_second += entry.second.second;   // Suma los segundos valores del pair
+    // }
+
+    // // // Calcula los promedios
+    // float average_first = sum_first / id_position_map.size();
+    // float average_second = sum_second / id_position_map.size();
+
+    // std::cout << "CENTER: " << average_first << " | " << average_second << std::endl;
     
     
-    
-    
-    
+    static std::vector<double> xrot;
+    static std::vector<double> yrot; 
+    static std::vector<double> zrot;
     
     
     if(not complete)
@@ -804,7 +813,7 @@ void Grid::update_costs(float robot_semi_width, bool color_all_cells, std::pair<
         std::pair<double, double> promedios = calcularPromedios(x_ordenado, y_ordenado);
         double xc = promedios.first;
         double yc = promedios.second;
-        double vf=0, vre=0, vl=0, vri=0;
+        double vf=0, vre=0.1, vl=0.2, vri=0.2;//------------------------------------------------------ojojojojojojojojojojoj
         
         std::pair<std::vector<double>, std::vector<double>> resultados = dis_ang(x_ordenado, y_ordenado, xc, yc);
         std::vector<double> distancias = resultados.first;
@@ -941,7 +950,7 @@ void Grid::update_costs(float robot_semi_width, bool color_all_cells, std::pair<
         }
 
         //determinar el conjunto de X, Y y Z que se tienen que considerar, para este caso z=0.1
-        double z = 0.1;
+        double z = 0.08;
         
 
         //TODO: Return vector creation
@@ -963,40 +972,71 @@ void Grid::update_costs(float robot_semi_width, bool color_all_cells, std::pair<
                 
             }
         }
+//-99999---------------------------------------------------------- ROTACION DE LA GAUSSIANA ---------------------------------------
+        double angulo_g = -30.0;
+        // Aplicar la rotación a la gaussiana
+        std::tuple<std::vector<double>, std::vector<double>, std::vector<double>> puntos_rotados = rotarGaussiana(vector_x, vector_y, vector_z, angulo_g, xc, yc);
+        // Obtener los puntos rotados
+        xrot = std::get<0>(puntos_rotados);
+        yrot = std::get<1>(puntos_rotados);
+        zrot = std::get<2>(puntos_rotados);
+//-99999----------------------------------------------------------        END             -----------------------------------------
+
         //----------------------------------------------------CONVERSION A MM DE LAS COORDENADAS X, Y -------------------------------
-        for (size_t i = 0; i < vector_x.size(); ++i) {
-            vector_x[i] *= 1000; // Convertir de milímetros a metros
-            vector_y[i] *= 1000; // Convertir de milímetros a metros
-            vector_z[i] *= 100; // Convertir coste max = 100
+        for (size_t i = 0; i < xrot.size(); ++i) {
+            xrot[i] *= 1000; // Convertir de milímetros a metros
+            yrot[i] *= 1000; // Convertir de milímetros a metros
+            zrot[i] *= 100; // Convertir coste max = 100
         }
         complete = true;
         qInfo()<< "----------------------Gaussiana calculada-------------------------";
     }
     else
     {   
-        auto v_x = vector_x;
-        auto v_y = vector_y;
-        auto v_z = vector_z;
+         // Declare vectores float para almacenar los valores convertidos
+        auto v_x = std::vector<float>(xrot.size());
+        auto v_y = std::vector<float>(yrot.size());
+        auto v_z = std::vector<float>(zrot.size());
+
+
+        // Copiar y convertir los valores de double a float usando std::transform
+        std::transform(xrot.begin(), xrot.end(), v_x.begin(), [](double d) { return static_cast<float>(d); });
+        std::transform(yrot.begin(), yrot.end(), v_y.begin(), [](double d) { return static_cast<float>(d); });
+        std::transform(zrot.begin(), zrot.end(), v_z.begin(), [](double d) { return static_cast<float>(d); });
 
         qInfo()<< "----------------------Transformacion gaussiana-------------------------";
     
-        for (size_t i = 0; i < vector_x.size(); ++i) {
-            //Eigen::Vector2f Grid::transform_target_to_global_frame(const Eigen::Transform<double, 3, 1> &tf, const Eigen::Vector2f tp)
-            Eigen::Vector2f trans_point = transform_target_to_global_frame(tf.first, Eigen::Vector2f(vector_x[i],vector_y[i]));
+        for (size_t i = 0; i < xrot.size(); ++i) {
+            //Eigen::Vector2f Grid::transform_target_to_global_frame(const Eigen::Transform<double, 3, 1> &tf, const Eigen::Vector2f tp);
+            Eigen::Vector2f trans_point = transform_target_to_global_frame(tf.first, Eigen::Vector2f(xrot[i],yrot[i]));
             v_x[i] = trans_point.x();
             v_y[i] = trans_point.y();
 
         }
-            
+        // std::cout << "Forma de puntos_rotados: " << v_x.size() << std::endl;
+        // std::cout << "Forma de puntos_rotados: " << v_y.size() << std::endl;
+        // std::cout << "Forma de puntos_rotados: " << v_z.size() << std::endl;
+
+        //----------------------------------------END CONVERSION A MM DE LAS COORDENADAS X,Y ----------------------------------------
+        // std::vector<float> vv_x(xrot.size());
+        // std::vector<float> vv_y(yrot.size());
+        // std::vector<float> vv_z(zrot.size());
+        // std::transform(xrot.begin(), xrot.end(), vv_x.begin(), [](double d) { return static_cast<float>(d); });
+        // std::transform(yrot.begin(), yrot.end(), vv_y.begin(), [](double d) { return static_cast<float>(d); });
+        // std::transform(zrot.begin(), zrot.end(), vv_z.begin(), [](double d) { return static_cast<float>(d); });
+        // std::cout << "Forma de puntos_rotados: " << vv_x.size() << std::endl;
+        // std::cout << "Forma de puntos_rotados: " << vv_y.size() << std::endl;
+        // std::cout << "Forma de puntos_rotados: " << vv_z.size() << std::endl;
+        // set_cost_by_offset(vv_x, vv_y, vv_z);
         set_cost_by_offset(v_x, v_y, v_z);
-        return;
+        // return;
     }
-    //----------------------------------------END CONVERSION A MM DE LAS COORDENADAS X,Y ----------------------------------------
+    
 
-    set_cost_by_offset(vector_x, vector_y, vector_z);
+//     //------------------------------------------------------END GAUSSIANA ----------------------------------------------------
+//     /*-----------------------FIN CODIGO NELSON--------------------------*/
 
-    //------------------------------------------------------END GAUSSIANA ----------------------------------------------------
-   
+
 }
 
 void Grid::set_cost_by_offset(std::vector<float> x_vector, std::vector<float> y_vector, std::vector<float> cost_vector){
@@ -1010,11 +1050,14 @@ void Grid::set_cost_by_offset(std::vector<float> x_vector, std::vector<float> y_
     for (int i = 0; i < x_vector.size(); ++i) {
         const Eigen::Vector2f position_2d(x_vector[i], y_vector[i]);
         const Key key = point_to_key(position_2d);
-        auto [_,cell] = get_cell(key);
+        auto cell = get_cell(key);
 
         if(std::get<bool>(cell)){
             std::get<T&>(cell).cost = cost_vector[i];
-
+            if(cost_vector[i] > 80){
+                std::get<T&>(cell).free = false;
+                std::get<T&>(cell).tile->setBrush(occ_brush);
+            }
             if(cost_vector[i] <= 40){
                 std::get<T&>(cell).tile->setBrush(green_brush);
                 continue;
@@ -1025,9 +1068,11 @@ void Grid::set_cost_by_offset(std::vector<float> x_vector, std::vector<float> y_
             }
             if(cost_vector[i] <= 80){
                 std::get<T&>(cell).tile->setBrush(orange_brush);
+
                 continue;
             }else{
                 std::get<T&>(cell).tile->setBrush(occ_brush);
+                // std::get<T&>(cell).free = false;
             }
 
         }else{
@@ -1409,61 +1454,10 @@ void Grid::contabilizarPosicionActual(){
         return;
     }
 
-    std::cout << "Porcentaje de veces por debajo de 25: " << static_cast<float>(niveles[0]) / totalIteraciones * 100 << "%" << std::endl;
-    std::cout << "Porcentaje de veces por debajo de 50: " << static_cast<float>(niveles[1]) / totalIteraciones * 100 << "%" << std::endl;
-    std::cout << "Porcentaje de veces por debajo de 75: " << static_cast<float>(niveles[2]) / totalIteraciones * 100 << "%" << std::endl;
-    std::cout << "Porcentaje de veces por debajo de 100: " << static_cast<float>(niveles[3]) / totalIteraciones * 100 << "%" << std::endl;
-}
-
-// Función para convertir grados a radianes
-double Grid::deg2rad(double degrees) {
-    double radian = degrees * M_PI / 180.0;
-    return radian;
-}
-
-// Función para determinar la traslación en los ejes
-std::pair<double, double> Grid::determinarTraslacion(double cmx, double cmy) {
-    double xmove;
-    double ymove;
-    if (cmx - cmx == 0) {
-        xmove = -cmx;
-    } else{
-        xmove = cmx;
-    }
-    
-    if (cmy - cmy == 0) {
-        ymove = -cmy;
-    } else{
-        ymove = cmy;
-    }
-    return std::make_pair(xmove, ymove);
-}
-
-// Función para aplicar la rotación a los puntos en 3D
-std::vector<std::vector<double>> Grid::aplicarRotacion(const std::vector<std::vector<double>>& puntos, double angulo) {
-    // Ángulo de rotación en radianes
-    angulo = deg2rad(angulo);
-    int n=3;
-    Eigen::MatrixXd rot (n,n);
-    rot << cos(angulo), -sin(angulo), 0,
-           sin(angulo),  cos(angulo), 0,
-                     0,            0, 1;
-    Eigen::MatrixXd punt (n,3);
-    for (int i = 0; i < puntos.size(); ++i) {
-        for (int j = 0; j < puntos[i].size(); ++j) {
-            punt(i, j) = puntos[i][j];
-        }
-    }
-    
-    Eigen::MatrixXd puntos_rot = punt * rot;
-    std::vector<std::vector<double>> rotar(punt.rows(), std::vector<double>(punt.cols()));
-    for (int i = 0; i < puntos_rot.rows(); ++i) {
-        for (int j = 0; j < puntos_rot.cols(); ++j) {
-            rotar[i][j] = puntos_rot(i, j);
-        }
-    }
- 
-    return rotar;
+//     std::cout << "Porcentaje de veces por debajo de 25: " << static_cast<float>(niveles[0]) / totalIteraciones * 100 << "%" << std::endl;
+//     std::cout << "Porcentaje de veces por debajo de 50: " << static_cast<float>(niveles[1]) / totalIteraciones * 100 << "%" << std::endl;
+//     std::cout << "Porcentaje de veces por debajo de 75: " << static_cast<float>(niveles[2]) / totalIteraciones * 100 << "%" << std::endl;
+//     std::cout << "Porcentaje de veces por debajo de 100: " << static_cast<float>(niveles[3]) / totalIteraciones * 100 << "%" << std::endl;
 }
 
 // Funciòn para determinar los promedios
@@ -1532,8 +1526,97 @@ Eigen::Vector2f Grid::transform_target_to_global_frame(const Eigen::Transform<do
     qInfo() << __FUNCTION__ <<  "Final Point: " << transformed_point.x() <<transformed_point.y();
     return transformed_point;
 }
-
-
 //----------------------------------------------- END ORDENAR PUNTOS -------
+//----------------------------------------------- ROTAR GAUSSIANAS -------
+// Función para convertir grados a radianes
+double Grid::deg2rad(double degrees) {
+    double radian = degrees * M_PI / 180.0;
+    return radian;
+}
+// Función para determinar la traslación en los ejes
+std::pair<double, double> Grid::determinarTraslacion(double cmx, double cmy) {
+    double xmove;
+    double ymove;
+    if (cmx - cmx == 0) {
+        xmove = -cmx;
+    } else{
+        xmove = cmx;
+    }
+    
+    if (cmy - cmy == 0) {
+        ymove = -cmy;
+    } else{
+        ymove = cmy;
+    }
+    return std::make_pair(xmove, ymove);
+}
+
+// Función para aplicar la rotación a los puntos en 3D
+std::vector<std::vector<double>> Grid::aplicarRotacion(const std::vector<std::vector<double>>& puntos, double angulo) {
+    // Ángulo de rotación en radianes
+    angulo = deg2rad(angulo);
+    int n=3;
+    Eigen::MatrixXd rot (n,n);
+    rot << cos(angulo), -sin(angulo), 0,
+           sin(angulo),  cos(angulo), 0,
+                     0,            0, 1;
+    Eigen::MatrixXd punt(puntos.size(), puntos[0].size());
+    std::cout << "r_mensaje_01" << std::endl;
+    std::cout << "Forma de puntos_rotados: " << puntos.size() << "x" << puntos[0].size() << std::endl;
+//5555555555555555555555555555555555555555555555555555555555555555555555555555555555
+    for (size_t i = 0; i < puntos.size(); ++i) {
+        for (size_t j = 0; j < puntos[0].size(); ++j) {
+            punt(i, j) = puntos[i][j];
+        }
+    }
+//5555555555555555555555555555555555555555555555555555555555555555555555555555555
+    std::cout << "r_mensaje_02" << std::endl;
+    Eigen::MatrixXd puntos_rot = punt * rot;
+    std::vector<std::vector<double>> rotar(punt.rows(), std::vector<double>(punt.cols()));
+    std::cout << "r_mensaje_03" << std::endl;
+    for (int i = 0; i < puntos_rot.rows(); ++i) {
+        for (int j = 0; j < puntos_rot.cols(); ++j) {
+            rotar[i][j] = puntos_rot(i, j);
+        }
+    }
+    std::cout << "r_mensaje_04" << std::endl;
+    return rotar;
+}
+// Función para realizar la rotación de la gaussiana
+std::tuple<std::vector<double>, std::vector<double>, std::vector<double>> Grid::rotarGaussiana(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& z, double angulo, double cmx, double cmy) {
+    // Determinar la traslación en los ejes
+    std::pair<double, double> traslacion = determinarTraslacion(cmx, cmy);
+    double xmove = traslacion.first;
+    double ymove = traslacion.second;
+    std::cout << " mensaje 01 " << std::endl;
+    // Aplicar la traslación de la gaussiana al origen de coordenadas
+    std::vector<std::vector<double>> puntos_traslados(x.size(), std::vector<double>(3));
+    for (size_t i = 0; i < x.size(); ++i) {
+        puntos_traslados[i][0] = x[i] + xmove;
+        puntos_traslados[i][1] = y[i] + ymove;
+        puntos_traslados[i][2] = z[i];
+    }
+    std::cout << " mensaje 02 " << std::endl;
+    // Aplicar la rotación a los puntos trasladados
+    std::vector<std::vector<double>> puntos_rotados = aplicarRotacion(puntos_traslados, angulo);
+    // Regresar la gaussiana a su posición original
+    std::cout << "mensaje 03: " << std::endl;
+    for (size_t i = 0; i < puntos_rotados.size(); ++i) {
+        puntos_rotados[i][0] -= xmove;
+        puntos_rotados[i][1] -= ymove;
+    }
+    std::cout << " mensaje 04 " << std::endl;
+    // Separar los puntos rotados en vectores xrot, yrot, zrot
+    std::vector<double> xrot(x.size());
+    std::vector<double> yrot(y.size());
+    std::vector<double> zrot(z.size());
+    for (size_t i = 0; i < puntos_rotados.size(); ++i) {
+        xrot[i] = puntos_rotados[i][0];
+        yrot[i] = puntos_rotados[i][1];
+        zrot[i] = puntos_rotados[i][2];
+    }
+    std::cout << " mensaje 05 " << std::endl;
+    return std::make_tuple(xrot, yrot, zrot);
+}
 
 // ----------------------------------- END ------------------------------
